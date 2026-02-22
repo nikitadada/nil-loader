@@ -214,15 +214,15 @@ timestamp | p50 | p95 | p99 | targetRps | actualRps | success | errors | errorBr
 
 ### Слайд 12 — Стек технологий
 
-| Компонент | Технология |
-|---|---|
-| Backend | Go 1.23 |
-| gRPC Dynamic Client | `jhump/protoreflect` |
+| Компонент | Технология                     |
+|---|--------------------------------|
+| Backend | Go 1.25                        |
+| gRPC Dynamic Client | `jhump/protoreflect`           |
 | Metrics | `HdrHistogram/hdrhistogram-go` |
-| WebSocket | `gorilla/websocket` |
-| Frontend Charts | Chart.js 4 |
-| Terminal | xterm.js 5 |
-| Сборка | `go:embed` (single binary) |
+| WebSocket | `gorilla/websocket`            |
+| Frontend Charts | Chart.js 4                     |
+| Terminal | xterm.js 5                     |
+| Сборка | `go:embed` (single binary)     |
 
 **Зависимости:** минимальные, стандартная библиотека Go где возможно.
 
