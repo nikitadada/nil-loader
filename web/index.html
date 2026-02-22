@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nil-loader — gRPC Load Tester</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#242835;--border:#2e3348;
+  --text:#e1e4ed;--text2:#8b90a5;--accent:#6c5ce7;--accent2:#a29bfe;
+  --green:#00b894;--red:#ff6b6b;--orange:#fdcb6e;--blue:#74b9ff;
+}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.top-bar h1{font-size:18px;font-weight:700;letter-spacing:-0.5px}
+.top-bar h1 span{color:var(--accent2)}
+.controls{display:flex;align-items:center;gap:12px}
+.status-badge{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;text-transform:uppercase}
+.status-idle{background:#2d3436;color:var(--text2)}
+.status-warmup{background:#e17055;color:#fff}
+.status-running{background:var(--green);color:#0f1117}
+.status-stopping{background:var(--orange);color:#0f1117}
+.status-finished{background:var(--accent);color:#fff}
+.timer{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text2)}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.btn-start{background:var(--green);color:#0f1117}
+.btn-start:hover{background:#00a884}
+.btn-stop{background:var(--red);color:#fff}
+.btn-stop:hover{background:#e05555}
+.btn-report{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-report:hover{background:var(--border)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:340px;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:16px;flex-shrink:0}
+.sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:12px;margin-top:16px}
+.sidebar h2:first-child{margin-top:0}
+.form-group{margin-bottom:10px}
+.form-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit}
+.form-group textarea{font-family:'JetBrains Mono',monospace;font-size:12px;resize:vertical;min-height:80px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent2)}
+.form-row{display:flex;gap:8px}
+.form-row .form-group{flex:1}
+.radio-group{display:flex;gap:8px;margin-bottom:10px}
+.radio-group label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:6px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)}
+.radio-group input:checked+span{color:var(--accent2)}
+.radio-group input{display:none}
+.btn-reflect{width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px}
+.btn-reflect:hover{background:var(--accent2)}
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.dashboard{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;padding:8px;overflow:hidden;min-height:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative}
+.card h3{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:4px;flex-shrink:0}
+.card .chart-wrap{flex:1;position:relative;min-height:0}
+.chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+.bottom-panel{height:160px;display:flex;border-top:1px solid var(--border);flex-shrink:0}
+.error-feed{flex:1;background:var(--surface);border-right:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
+.error-feed h3{font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);padding:10px 14px 6px;flex-shrink:0}
+.error-list{flex:1;overflow-y:auto;padding:0 14px 10px;font-size:12px}
+.error-item{padding:4px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.error-item .code{color:var(--red);font-weight:600;min-width:120px}
+.error-item .msg{color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.error-item .ts{color:var(--text2);min-width:80px;text-align:right}
+.terminal-panel{flex:1;background:#000;overflow:hidden}
+.terminal-panel h3{font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);padding:10px 14px 6px;background:var(--surface)}
+#terminal-container{height:calc(100% - 32px)}
+.donut-container{display:flex;align-items:center;justify-content:center;gap:16px;flex:1;min-height:0;overflow:hidden}
+.donut-container canvas{max-width:140px;max-height:140px;flex-shrink:0}
+.donut-stats{font-size:13px;line-height:2}
+.donut-stats .val{font-weight:700;font-family:'JetBrains Mono',monospace}
+.donut-stats .success{color:var(--green)}
+.donut-stats .errors{color:var(--red)}
+.degradation-info{margin-top:4px;font-size:12px;line-height:1.7}
+.deg-divider{height:1px;background:var(--border);margin:4px 0}
+.deg-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;background:var(--red);color:#fff;margin-bottom:4px}
+.deg-warn{color:var(--orange)}
+.deg-ok{color:var(--green)}
+.deg-reason{font-size:10px;color:var(--text2);margin-top:2px;font-style:italic}
+.method-list{max-height:120px;overflow-y:auto;font-size:12px}
+.method-item{padding:4px 8px;cursor:pointer;border-radius:4px}
+.method-item:hover{background:var(--surface2)}
+.method-item.selected{background:var(--accent);color:#fff}
+.service-name{font-size:11px;color:var(--accent2);margin-top:6px;margin-bottom:2px;font-weight:600}
+.proto-collapse{margin-bottom:10px}
+.proto-collapse summary{font-size:12px;color:var(--text2);cursor:pointer;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;list-style:none;display:flex;align-items:center;gap:6px}
+.proto-collapse summary::-webkit-details-marker{display:none}
+.proto-collapse summary::before{content:'▸';font-size:10px;transition:transform 0.15s}
+.proto-collapse[open] summary::before{transform:rotate(90deg)}
+.sidebar-divider{height:1px;background:var(--border);margin:14px 0}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1><span>nil</span>-loader</h1>
+  <div class="controls">
+    <span id="statusBadge" class="status-badge status-idle">IDLE</span>
+    <span id="timer" class="timer">00:00</span>
+    <button id="btnStart" class="btn btn-start" onclick="startTest()">Start</button>
+    <button id="btnStop" class="btn btn-stop" onclick="stopTest()" disabled>Stop</button>
+    <button id="btnReport" class="btn btn-report" onclick="downloadReport()">Report</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <h2>Connection</h2>
+    <div class="form-group">
+      <label>Target Host</label>
+      <input type="text" id="target" placeholder="localhost:50051" value="localhost:50051">
+    </div>
+    <button class="btn-reflect" onclick="reflectServices()">Discover via Reflection</button>
+
+    <details class="proto-collapse">
+      <summary>Proto Definition (optional)</summary>
+      <div class="form-group" style="margin-top:8px">
+        <textarea id="protoContent" placeholder='syntax = "proto3";&#10;package example;&#10;...'></textarea>
+      </div>
+      <button class="btn-reflect" onclick="parseProto()">Parse Proto</button>
+    </details>
+
+    <div id="serviceList"></div>
+
+    <!-- Selected Method block (hidden, kept for future use)
+    <details class="proto-collapse">
+      <summary>Selected Method <span id="selectedMethodLabel" style="color:var(--accent2);margin-left:4px">— not set</span></summary>
+      <div class="form-group" style="margin-top:8px">
+        <label>Service</label>
+        <input type="text" id="serviceName" placeholder="Select via Reflection or Proto">
+      </div>
+      <div class="form-group">
+        <label>Method</label>
+        <input type="text" id="methodName" placeholder="Select via Reflection or Proto">
+      </div>
+    </details>
+    -->
+    <input type="hidden" id="serviceName">
+    <input type="hidden" id="methodName">
+
+    <div class="sidebar-divider"></div>
+
+    <h2>Load Profile</h2>
+    <div class="radio-group">
+      <label><input type="radio" name="profile" value="constant" checked><span>Constant</span></label>
+      <label><input type="radio" name="profile" value="ramping"><span>Ramping</span></label>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Start RPS</label>
+        <input type="number" id="startRps" value="100" min="1">
+      </div>
+      <div class="form-group" id="endRpsGroup" style="display:none">
+        <label>End RPS</label>
+        <input type="number" id="endRps" value="1000" min="1">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Duration (s)</label>
+        <input type="number" id="duration" value="30" min="1">
+      </div>
+      <div class="form-group">
+        <label>Max Workers</label>
+        <input type="number" id="maxWorkers" value="200" min="1">
+      </div>
+    </div>
+
+    <h2>Payload Template</h2>
+    <div class="form-group">
+      <textarea id="payloadTemplate" placeholder='{"user_id": "{{faker.uuid}}", "name": "{{faker.name}}"}'></textarea>
+    </div>
+
+    <h2>CSV Data (optional)</h2>
+    <div class="form-group">
+      <textarea id="csvData" placeholder="id,name,email&#10;1,Alice,a@test.com"></textarea>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="dashboard">
+      <div class="card">
+        <h3>Latency (ms) — p50 / p95 / p99</h3>
+        <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Throughput (RPS)</h3>
+        <div class="chart-wrap"><canvas id="rpsChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Success Rate & Degradation</h3>
+        <div class="donut-container">
+          <canvas id="donutChart"></canvas>
+          <div class="donut-stats">
+            <div>Success: <span class="val success" id="successCount">0</span></div>
+            <div>Errors: <span class="val errors" id="errorCount">0</span></div>
+            <div>Rate: <span class="val" id="successRate">100%</span></div>
+            <div class="degradation-info" id="degradationInfo" style="display:none">
+              <div class="deg-divider"></div>
+              <div class="deg-badge" id="degBadge">Degradation detected</div>
+              <div>Degradation at: <span class="val deg-warn" id="degRps">—</span> RPS</div>
+              <div>Recommended: <span class="val deg-ok" id="degRecommended">—</span> RPS</div>
+              <div>Max stable: <span class="val deg-ok" id="degMaxStable">—</span> RPS</div>
+              <div class="deg-reason" id="degReason"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Error Breakdown</h3>
+        <div class="chart-wrap"><canvas id="errorChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="bottom-panel">
+      <div class="error-feed">
+        <h3>Error Log (Live)</h3>
+        <div class="error-list" id="errorList"></div>
+      </div>
+      <div class="terminal-panel">
+        <h3>Streaming Logs</h3>
+        <div id="terminal-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_BASE = `ws://${location.host}`;
+const API_BASE = `http://${location.host}`;
+let metricsWs, logsWs, errorsWs;
+let timerInterval;
+let startTime;
+
+// Charts
+const MAX_POINTS = 120;
+const latencyData = {labels:[],datasets:[
+  {label:'p50',data:[],borderColor:'#74b9ff',borderWidth:2,pointRadius:0,tension:0.3},
+  {label:'p95',data:[],borderColor:'#fdcb6e',borderWidth:2,pointRadius:0,tension:0.3},
+  {label:'p99',data:[],borderColor:'#ff6b6b',borderWidth:2,pointRadius:0,tension:0.3}
+]};
+const rpsData = {labels:[],datasets:[
+  {label:'Target RPS',data:[],borderColor:'#a29bfe',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(162,155,254,0.1)',tension:0.3},
+  {label:'Actual RPS',data:[],borderColor:'#00b894',borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(0,184,148,0.1)',tension:0.3}
+]};
+const donutData = {labels:['Success','Errors'],datasets:[{data:[1,0],backgroundColor:['#00b894','#ff6b6b'],borderWidth:0}]};
+const errorBarData = {labels:[],datasets:[{data:[],backgroundColor:'#ff6b6b',borderRadius:4}]};
+
+const chartOpts = (title) => ({responsive:true,maintainAspectRatio:false,animation:{duration:0},plugins:{legend:{labels:{color:'#8b90a5',font:{size:11}}},title:{display:false}},scales:{x:{ticks:{color:'#8b90a5',font:{size:10},maxTicksLimit:10},grid:{color:'#2e3348'}},y:{ticks:{color:'#8b90a5',font:{size:10}},grid:{color:'#2e3348'},beginAtZero:true}}});
+const donutOpts = {responsive:true,maintainAspectRatio:true,animation:{duration:300},plugins:{legend:{display:false}},cutout:'70%'};
+const barOpts = {responsive:true,maintainAspectRatio:false,animation:{duration:0},indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a5'},grid:{color:'#2e3348'},beginAtZero:true},y:{ticks:{color:'#8b90a5',font:{size:11}},grid:{display:false}}}};
+
+let latencyChart, rpsChart, donutChart, errorChart;
+
+function initCharts(){
+  latencyChart = new Chart(document.getElementById('latencyChart'),{type:'line',data:latencyData,options:chartOpts()});
+  rpsChart = new Chart(document.getElementById('rpsChart'),{type:'line',data:rpsData,options:chartOpts()});
+  donutChart = new Chart(document.getElementById('donutChart'),{type:'doughnut',data:donutData,options:donutOpts});
+  errorChart = new Chart(document.getElementById('errorChart'),{type:'bar',data:errorBarData,options:barOpts});
+}
+
+// Terminal
+let term;
+function termLog(msg){
+  if(term && term.writeln){term.writeln(msg);}
+  else{console.log('[nil-loader]',msg);}
+}
+function initTerminal(){
+  try{
+    term = new Terminal({theme:{background:'#000',foreground:'#e1e4ed'},fontSize:12,fontFamily:'"JetBrains Mono",monospace',scrollback:1000,disableStdin:true});
+    term.open(document.getElementById('terminal-container'));
+    term.writeln('\x1b[36m[nil-loader]\x1b[0m Ready. Configure and press Start.');
+  }catch(e){
+    console.error('xterm init failed:',e);
+  }
+}
+
+// Profile toggle
+document.querySelectorAll('input[name=profile]').forEach(r=>{
+  r.addEventListener('change',()=>{
+    document.getElementById('endRpsGroup').style.display = r.value==='ramping'?'':'none';
+  });
+});
+
+// Reflect
+async function reflectServices(){
+  const target = document.getElementById('target').value;
+  try{
+    const resp = await fetch(`${API_BASE}/api/reflect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target})});
+    const data = await resp.json();
+    if(data.error){termLog(`\x1b[31m[ERROR]\x1b[0m ${data.error}`);return;}
+    renderServices(data);
+  }catch(e){termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);}
+}
+
+async function parseProto(){
+  const content = document.getElementById('protoContent').value;
+  try{
+    const resp = await fetch(`${API_BASE}/api/parse-proto`,{method:'POST',body:content});
+    const data = await resp.json();
+    if(data.error){termLog(`\x1b[31m[ERROR]\x1b[0m ${data.error}`);return;}
+    renderServices(data);
+  }catch(e){termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);}
+}
+
+function renderServices(info){
+  const el = document.getElementById('serviceList');
+  if(!info.services||!info.services.length){el.innerHTML='<p style="color:var(--text2);font-size:12px">No services found</p>';return;}
+  let html = '<div class="method-list">';
+  info.services.forEach(svc=>{
+    html += `<div class="service-name">${svc.name}</div>`;
+    svc.methods.forEach(m=>{
+      html += `<div class="method-item" onclick="selectMethod(this,'${svc.name}','${m.name}')">${m.name} <span style="color:var(--text2)">(${m.inputType})</span></div>`;
+    });
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function selectMethod(el, svc, method){
+  document.getElementById('serviceName').value = svc;
+  document.getElementById('methodName').value = method;
+  document.querySelectorAll('.method-item').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Start/Stop
+async function startTest(){
+  resetCharts();
+  const profile = document.querySelector('input[name=profile]:checked').value;
+  const startRps = parseInt(document.getElementById('startRps').value)||100;
+  const cfg = {
+    target: document.getElementById('target').value,
+    service: document.getElementById('serviceName').value,
+    method: document.getElementById('methodName').value,
+    loadProfile: profile,
+    startRps: startRps,
+    endRps: profile==='ramping' ? (parseInt(document.getElementById('endRps').value)||1000) : startRps,
+    duration: parseInt(document.getElementById('duration').value)||30,
+    maxWorkers: parseInt(document.getElementById('maxWorkers').value)||200,
+    payloadTemplate: document.getElementById('payloadTemplate').value,
+    csvData: document.getElementById('csvData').value,
+    useReflection: !document.getElementById('protoContent').value,
+    protoContent: document.getElementById('protoContent').value,
+  };
+
+  try{
+    const resp = await fetch(`${API_BASE}/api/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
+    const data = await resp.json();
+    if(data.error){termLog(`\x1b[31m[ERROR]\x1b[0m ${data.error}`);return;}
+    termLog(`\x1b[32m[START]\x1b[0m Test started`);
+    connectWebSockets();
+    startTimer();
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+  }catch(e){termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);}
+}
+
+async function stopTest(){
+  try{
+    await fetch(`${API_BASE}/api/stop`,{method:'POST'});
+    termLog(`\x1b[33m[STOP]\x1b[0m Stopping test...`);
+  }catch(e){termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);}
+}
+
+function downloadReport(){
+  window.open(`${API_BASE}/api/report`,'_blank');
+}
+
+// WebSockets
+function connectWebSockets(){
+  disconnectWebSockets();
+  metricsWs = new WebSocket(`${WS_BASE}/ws/metrics`);
+  metricsWs.onmessage = (e)=>{
+    const msg = JSON.parse(e.data);
+    if(msg.type==='metrics') updateMetrics(msg.data);
+    if(msg.type==='status') updateStatus(msg.data.status);
+    if(msg.type==='degradation') updateDegradation(msg.data);
+  };
+
+  logsWs = new WebSocket(`${WS_BASE}/ws/logs`);
+  logsWs.onmessage = (e)=>{
+    const msg = JSON.parse(e.data);
+    if(msg.type==='log') termLog(msg.data);
+  };
+
+  errorsWs = new WebSocket(`${WS_BASE}/ws/errors`);
+  errorsWs.onmessage = (e)=>{
+    const msg = JSON.parse(e.data);
+    if(msg.type==='error') addErrorEntry(msg.data);
+  };
+}
+
+function disconnectWebSockets(){
+  [metricsWs,logsWs,errorsWs].forEach(ws=>{if(ws)ws.close()});
+}
+
+function updateStatus(status){
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = status.toUpperCase();
+  badge.className = 'status-badge status-'+status;
+  if(status==='finished'||status==='idle'){
+    stopTimer();
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+  }
+}
+
+function updateMetrics(snap){
+  const label = new Date(snap.timestamp).toLocaleTimeString();
+
+  // Latency
+  latencyData.labels.push(label);
+  latencyData.datasets[0].data.push(snap.p50);
+  latencyData.datasets[1].data.push(snap.p95);
+  latencyData.datasets[2].data.push(snap.p99);
+  trimData(latencyData);
+  latencyChart.update();
+
+  // RPS
+  rpsData.labels.push(label);
+  rpsData.datasets[0].data.push(snap.targetRps);
+  rpsData.datasets[1].data.push(snap.actualRps);
+  trimData(rpsData);
+  rpsChart.update();
+
+  // Donut
+  const s = snap.successNum||0, er = snap.errorNum||0;
+  donutData.datasets[0].data = [s, er];
+  donutChart.update();
+  document.getElementById('successCount').textContent = s;
+  document.getElementById('errorCount').textContent = er;
+  const rate = s+er>0 ? ((s/(s+er))*100).toFixed(1)+'%' : '100%';
+  document.getElementById('successRate').textContent = rate;
+
+  // Error breakdown
+  if(snap.errors){
+    const codes = Object.keys(snap.errors);
+    errorBarData.labels = codes;
+    errorBarData.datasets[0].data = codes.map(c=>snap.errors[c]);
+    errorChart.update();
+  }
+}
+
+function addErrorEntry(entry){
+  const list = document.getElementById('errorList');
+  const ts = new Date(entry.timestamp).toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = 'error-item';
+  div.innerHTML = `<span class="code">${entry.code}</span><span class="msg">${entry.message}</span><span class="ts">${ts}</span>`;
+  list.prepend(div);
+  while(list.children.length > 50) list.removeChild(list.lastChild);
+}
+
+function trimData(chartData){
+  if(chartData.labels.length > MAX_POINTS){
+    chartData.labels.shift();
+    chartData.datasets.forEach(ds=>ds.data.shift());
+  }
+}
+
+function updateDegradation(deg){
+  const el = document.getElementById('degradationInfo');
+  if(!deg || !deg.detected){el.style.display='none';return;}
+  el.style.display='block';
+  document.getElementById('degRps').textContent = Math.round(deg.degradationRps);
+  document.getElementById('degRecommended').textContent = Math.round(deg.recommendedRps);
+  document.getElementById('degMaxStable').textContent = Math.round(deg.maxStableRps);
+  document.getElementById('degReason').textContent = deg.reason;
+}
+
+function resetCharts(){
+  latencyData.labels=[];latencyData.datasets.forEach(d=>d.data=[]);
+  rpsData.labels=[];rpsData.datasets.forEach(d=>d.data=[]);
+  donutData.datasets[0].data=[1,0];
+  errorBarData.labels=[];errorBarData.datasets[0].data=[];
+  [latencyChart,rpsChart,donutChart,errorChart].forEach(c=>c&&c.update());
+  document.getElementById('errorList').innerHTML='';
+  document.getElementById('degradationInfo').style.display='none';
+  document.getElementById('successCount').textContent='0';
+  document.getElementById('errorCount').textContent='0';
+  document.getElementById('successRate').textContent='100%';
+}
+
+// Timer
+function startTimer(){
+  startTime = Date.now();
+  timerInterval = setInterval(()=>{
+    const elapsed = Math.floor((Date.now()-startTime)/1000);
+    const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    document.getElementById('timer').textContent = `${m}:${s}`;
+  },1000);
+}
+function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
+
+// Init
+window.addEventListener('load',()=>{initCharts();initTerminal();});
+</script>
+</body>
+</html>

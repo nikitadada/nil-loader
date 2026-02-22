@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package example;
+
+option go_package = "github.com/nikitadada/nil-loader/proto/example";
+
+service ExampleService {
+  rpc ProcessUser(ProcessUserRequest) returns (ProcessUserResponse);
+}
+
+message ProcessUserRequest {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string username = 5;
+  string message = 6;
+}
+
+message ProcessUserResponse {
+  string status = 1;
+  string request_id = 2;
+  int64 processed_at = 3;
+}
