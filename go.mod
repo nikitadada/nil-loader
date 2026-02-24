@@ -1,6 +1,6 @@
 module github.com/nikitadada/nil-loader
 
-go 1.25.6
+go 1.25
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.2.0
