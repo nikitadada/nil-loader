@@ -48,9 +48,6 @@ test-cover:
 	go test -race -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
 
-tidy:
-	go mod tidy
-
 check: fmt vet lint test
 
 ## Docker
