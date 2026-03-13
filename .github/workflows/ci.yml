@@ -59,3 +59,35 @@ jobs:
 
       - name: Build testservice
         run: go build -o bin/testservice ./cmd/testservice/
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.NIL_LOADER_DEPLOY }}
+          source: "."
+          target: "~/apps/nil-loader"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.NIL_LOADER_DEPLOY }}
+          script: |
+            cd ~/apps/nil-loader
+
+            docker compose down || true
+
+            docker compose build
+
+            docker compose up -d
