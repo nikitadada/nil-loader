@@ -65,6 +65,18 @@ jobs:
 
     steps:
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.NIL_LOADER_DEPLOY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Test SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 root@${{ secrets.VPS_HOST }} "echo SSH_OK"
+          
+      
+
       - uses: actions/checkout@v4
 
       - name: Copy project to server
