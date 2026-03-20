@@ -91,6 +91,7 @@ jobs:
       - name: Run deploy commands
         uses: appleboy/ssh-action@v1
         with:
+          timeout: 30m
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.NIL_LOADER_DEPLOY }}
