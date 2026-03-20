@@ -19,6 +19,6 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /bin/nil-loader /usr/local/bin/nil-loader
 COPY --from=builder /bin/testservice /usr/local/bin/testservice
 
-EXPOSE 8081 50051
+EXPOSE 8080 50051
 
 ENTRYPOINT ["nil-loader"]
