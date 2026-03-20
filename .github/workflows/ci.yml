@@ -98,6 +98,6 @@ jobs:
           key: ${{ secrets.NIL_LOADER_DEPLOY }}
           script: |
             cd /opt/nil-loader
-            docker compose down || true
+            docker compose down --remove-orphans || true
             docker compose build
             docker compose up -d

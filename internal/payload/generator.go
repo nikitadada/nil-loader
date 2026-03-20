@@ -54,17 +54,18 @@ func (g *Generator) replaceFakerTokens(s string) string {
 	defer g.mu.Unlock()
 
 	replacements := map[string]func() string{
-		"{{faker.uuid}}":      func() string { return fakeUUID(g.rng) },
-		"{{faker.email}}":     func() string { return fakeEmail(g.rng) },
-		"{{faker.name}}":      func() string { return fakeName(g.rng) },
-		"{{faker.firstName}}": func() string { return fakeFirstName(g.rng) },
-		"{{faker.lastName}}":  func() string { return fakeLastName(g.rng) },
-		"{{faker.phone}}":     func() string { return fakePhone(g.rng) },
-		"{{faker.int}}":       func() string { return fmt.Sprintf("%d", g.rng.Intn(100000)) },
-		"{{faker.username}}":  func() string { return fakeUsername(g.rng) },
-		"{{faker.sentence}}":  func() string { return fakeSentence(g.rng) },
-		"{{faker.timestamp}}": func() string { return time.Now().UTC().Format(time.RFC3339) },
-		"{{faker.bool}}":      func() string { return fmt.Sprintf("%t", g.rng.Intn(2) == 1) },
+		"{{faker.uuid}}":         func() string { return fakeUUID(g.rng) },
+		"{{faker.email}}":        func() string { return fakeEmail(g.rng) },
+		"{{faker.name}}":         func() string { return fakeName(g.rng) },
+		"{{faker.firstName}}":    func() string { return fakeFirstName(g.rng) },
+		"{{faker.lastName}}":     func() string { return fakeLastName(g.rng) },
+		"{{faker.phone}}":        func() string { return fakePhone(g.rng) },
+		"{{faker.int}}":          func() string { return fmt.Sprintf("%d", g.rng.Intn(100000)) },
+		"{{faker.username}}":     func() string { return fakeUsername(g.rng) },
+		"{{faker.sentence}}":     func() string { return fakeSentence(g.rng) },
+		"{{faker.timestamp}}":    func() string { return time.Now().UTC().Format(time.RFC3339) },
+		"{{faker.bool}}":         func() string { return fmt.Sprintf("%t", g.rng.Intn(2) == 1) },
+		"{{faker.safeAlphaNum}}": func() string { return fakeSafeAlphaNum(g.rng, 16) },
 	}
 
 	for token, fn := range replacements {
@@ -158,4 +159,13 @@ func fakeSentence(r *rand.Rand) string {
 		parts[0] = strings.ToUpper(parts[0][:1]) + parts[0][1:]
 	}
 	return strings.Join(parts, " ") + "."
+}
+
+func fakeSafeAlphaNum(r *rand.Rand, n int) string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = alphabet[r.Intn(len(alphabet))]
+	}
+	return string(b)
 }

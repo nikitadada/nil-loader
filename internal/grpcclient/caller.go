@@ -21,6 +21,15 @@ type Caller struct {
 	methodDesc *desc.MethodDescriptor
 }
 
+// GetInputType returns the RPC input message descriptor.
+// It is used by the web/API layer to auto-generate a payload template.
+func (c *Caller) GetInputType() *desc.MessageDescriptor {
+	if c == nil || c.methodDesc == nil {
+		return nil
+	}
+	return c.methodDesc.GetInputType()
+}
+
 func NewCaller(target string, useReflection bool, serviceName, methodName string, protoContent string) (*Caller, error) {
 	conn, err := grpc.NewClient(target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

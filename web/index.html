@@ -190,6 +190,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
     <h2>Payload Template</h2>
     <div class="form-group">
       <textarea id="payloadTemplate" placeholder='{"user_id": "{{faker.uuid}}", "name": "{{faker.name}}"}'></textarea>
+      <button class="btn-reflect" style="margin-top:8px" onclick="autoFillPayload()">Auto Fill Payload</button>
     </div>
 
     <h2>CSV Data (optional)</h2>
@@ -448,6 +449,48 @@ async function startTest(){
     document.getElementById('btnStart').disabled = true;
     document.getElementById('btnStop').disabled = false;
   }catch(e){termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);}
+}
+
+async function autoFillPayload(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
+
+  const target = document.getElementById('target').value;
+  const service = document.getElementById('serviceName').value;
+  const method = document.getElementById('methodName').value;
+  const protoContent = document.getElementById('protoContent').value;
+  const useReflection = !protoContent;
+  const maxDepth = 5;
+
+  if(!target || !service || !method){
+    termLog('\x1b[31m[ERROR]\x1b[0m Select target/service/method first');
+    return;
+  }
+
+  try{
+    const resp = await fetch(`${API_BASE}/api/auto-payload-template`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({target,service,method,useReflection,protoContent,maxDepth}),
+    });
+    let data = null;
+    try{data = await resp.json();}catch(_e){}
+    if(!resp.ok){
+      const msg = (data && data.error) ? data.error : `HTTP ${resp.status}`;
+      termLog(`\x1b[31m[ERROR]\x1b[0m ${msg}`);
+      return;
+    }
+    if(data && data.payloadTemplate){
+      document.getElementById('payloadTemplate').value = data.payloadTemplate;
+      termLog(`\x1b[32m[AUTO]\x1b[0m Payload template generated`);
+    }else{
+      termLog('\x1b[31m[ERROR]\x1b[0m Payload template was not returned');
+    }
+    if(data && data.warnings && Array.isArray(data.warnings) && data.warnings.length){
+      termLog(`\x1b[33m[WARN]\x1b[0m ${data.warnings.join('; ')}`);
+    }
+  }catch(e){
+    termLog(`\x1b[31m[ERROR]\x1b[0m ${e.message}`);
+  }
 }
 
 async function stopTest(){

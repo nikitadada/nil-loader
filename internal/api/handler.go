@@ -11,6 +11,7 @@ import (
 	"github.com/nikitadada/nil-loader/internal/engine"
 	"github.com/nikitadada/nil-loader/internal/grpcclient"
 	"github.com/nikitadada/nil-loader/internal/model"
+	"github.com/nikitadada/nil-loader/internal/payload"
 	"github.com/nikitadada/nil-loader/internal/telemetry"
 )
 
@@ -39,6 +40,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/status", h.requireAuth(h.handleStatus))
 	mux.HandleFunc("/api/reflect", h.requireAuth(h.handleReflect))
 	mux.HandleFunc("/api/parse-proto", h.requireAuth(h.handleParseProto))
+	mux.HandleFunc("/api/auto-payload-template", h.requireAuth(h.handleAutoPayloadTemplate))
 	mux.HandleFunc("/api/degradation", h.requireAuth(h.handleDegradation))
 	mux.HandleFunc("/api/report", h.requireAuth(h.handleReport))
 }
@@ -217,6 +219,61 @@ func (h *Handler) handleParseProto(w http.ResponseWriter, r *http.Request) {
 
 	info := grpcclient.ListServicesFromProto(fds)
 	writeJSON(w, http.StatusOK, info)
+}
+
+func (h *Handler) handleAutoPayloadTemplate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Target        string `json:"target"`
+		Service       string `json:"service"`
+		Method        string `json:"method"`
+		UseReflection bool   `json:"useReflection"`
+		ProtoContent  string `json:"protoContent,omitempty"`
+		MaxDepth      int    `json:"maxDepth,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	if req.Target == "" || req.Service == "" || req.Method == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "target, service, and method are required"})
+		return
+	}
+
+	if req.MaxDepth <= 0 {
+		req.MaxDepth = 5
+	}
+
+	caller, err := grpcclient.NewCaller(
+		req.Target,
+		req.UseReflection,
+		req.Service,
+		req.Method,
+		req.ProtoContent,
+	)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	defer caller.Close()
+
+	inputType := caller.GetInputType()
+	tpl, warnings, err := payload.GeneratePayloadTemplate(inputType, req.MaxDepth)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"payloadTemplate": tpl,
+		"warnings":        warnings,
+	})
 }
 
 func (h *Handler) handleDegradation(w http.ResponseWriter, r *http.Request) {
