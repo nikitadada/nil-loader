@@ -249,8 +249,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 </div>
 
 <script>
-const WS_BASE = `ws://${location.host}`;
-const API_BASE = `http://${location.host}`;
+const wsScheme = location.protocol === 'https:' ? 'wss' : 'ws';
+const httpScheme = location.protocol === 'https:' ? 'https' : 'http';
+const WS_BASE = `${wsScheme}://${location.host}`;
+const API_BASE = `${httpScheme}://${location.host}`;
 let metricsWs, logsWs, errorsWs;
 let timerInterval;
 let startTime;
