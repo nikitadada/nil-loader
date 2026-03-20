@@ -18,10 +18,11 @@ run-test: build
 	./bin/$(TEST_SVC)
 
 run-all: build
+	@$(MAKE) stop
 	./bin/$(TEST_SVC) & echo $$! > .testservice.pid
 	sleep 1
 	./bin/$(APP_NAME)
-	@if [ -f .testservice.pid ]; then kill $$(cat .testservice.pid) 2>/dev/null; rm -f .testservice.pid; fi
+	@if [ -f .testservice.pid ]; then kill $$(cat .testservice.pid) 2>/dev/null || true; rm -f .testservice.pid; fi
 
 stop:
 	@lsof -ti :8080 | xargs kill -9 2>/dev/null || true

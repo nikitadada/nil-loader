@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nikitadada/nil-loader/internal/auth"
 	"github.com/nikitadada/nil-loader/internal/engine"
 	"github.com/nikitadada/nil-loader/internal/grpcclient"
 	"github.com/nikitadada/nil-loader/internal/model"
@@ -17,24 +18,95 @@ type Handler struct {
 	engine    *engine.Engine
 	state     *model.TestState
 	collector *telemetry.Collector
+	auth      *auth.Service
 }
 
-func NewHandler(eng *engine.Engine, state *model.TestState, collector *telemetry.Collector) *Handler {
+func NewHandler(eng *engine.Engine, state *model.TestState, collector *telemetry.Collector, authSvc *auth.Service) *Handler {
 	return &Handler{
 		engine:    eng,
 		state:     state,
 		collector: collector,
+		auth:      authSvc,
 	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/start", h.handleStart)
-	mux.HandleFunc("/api/stop", h.handleStop)
-	mux.HandleFunc("/api/status", h.handleStatus)
-	mux.HandleFunc("/api/reflect", h.handleReflect)
-	mux.HandleFunc("/api/parse-proto", h.handleParseProto)
-	mux.HandleFunc("/api/degradation", h.handleDegradation)
-	mux.HandleFunc("/api/report", h.handleReport)
+	mux.HandleFunc("/auth/login", h.handleAuthLogin)
+	mux.HandleFunc("/auth/status", h.handleAuthStatus)
+
+	mux.HandleFunc("/api/start", h.requireAuth(h.handleStart))
+	mux.HandleFunc("/api/stop", h.requireAuth(h.handleStop))
+	mux.HandleFunc("/api/status", h.requireAuth(h.handleStatus))
+	mux.HandleFunc("/api/reflect", h.requireAuth(h.handleReflect))
+	mux.HandleFunc("/api/parse-proto", h.requireAuth(h.handleParseProto))
+	mux.HandleFunc("/api/degradation", h.requireAuth(h.handleDegradation))
+	mux.HandleFunc("/api/report", h.requireAuth(h.handleReport))
+}
+
+func (h *Handler) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.auth == nil || !h.auth.IsAuthenticatedRequest(r) {
+			writeJSON(w, http.StatusUnauthorized, map[string]bool{"authenticated": false})
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (h *Handler) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.auth == nil {
+		http.Error(w, "auth not configured", http.StatusInternalServerError)
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	// Client is expected to send JSON: {"password":"..."}.
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1024))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json body"})
+		return
+	}
+
+	if req.Password == "" || !h.auth.CheckPassword(req.Password) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	if err := h.auth.SetAuthCookie(w, r, time.Now()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
+}
+
+func (h *Handler) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if h.auth == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "auth not configured"})
+		return
+	}
+
+	ok := h.auth.IsAuthenticatedRequest(r)
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]bool{"authenticated": false})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
 }
 
 func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {

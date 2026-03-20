@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/nikitadada/nil-loader/internal/auth"
 	"github.com/nikitadada/nil-loader/internal/engine"
 	"github.com/nikitadada/nil-loader/internal/model"
 	"github.com/nikitadada/nil-loader/internal/telemetry"
@@ -20,13 +21,15 @@ type WSHandler struct {
 	engine    *engine.Engine
 	collector *telemetry.Collector
 	state     *model.TestState
+	auth      *auth.Service
 }
 
-func NewWSHandler(eng *engine.Engine, collector *telemetry.Collector, state *model.TestState) *WSHandler {
+func NewWSHandler(eng *engine.Engine, collector *telemetry.Collector, state *model.TestState, authSvc *auth.Service) *WSHandler {
 	return &WSHandler{
 		engine:    eng,
 		collector: collector,
 		state:     state,
+		auth:      authSvc,
 	}
 }
 
@@ -37,6 +40,11 @@ func (h *WSHandler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *WSHandler) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	if h.auth == nil || !h.auth.IsAuthenticatedRequest(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("websocket upgrade error: %v", err)
@@ -80,6 +88,11 @@ func (h *WSHandler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WSHandler) handleLogs(w http.ResponseWriter, r *http.Request) {
+	if h.auth == nil || !h.auth.IsAuthenticatedRequest(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("websocket upgrade error: %v", err)
@@ -89,22 +102,21 @@ func (h *WSHandler) handleLogs(w http.ResponseWriter, r *http.Request) {
 
 	logCh := h.engine.LogChannel()
 
-	for {
-		select {
-		case msg, ok := <-logCh:
-			if !ok {
-				return
-			}
-			wsMsg := model.WSMessage{Type: "log", Data: msg}
-			data, _ := json.Marshal(wsMsg)
-			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				return
-			}
+	for msg := range logCh {
+		wsMsg := model.WSMessage{Type: "log", Data: msg}
+		data, _ := json.Marshal(wsMsg)
+		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			return
 		}
 	}
 }
 
 func (h *WSHandler) handleErrors(w http.ResponseWriter, r *http.Request) {
+	if h.auth == nil || !h.auth.IsAuthenticatedRequest(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("websocket upgrade error: %v", err)
@@ -115,16 +127,10 @@ func (h *WSHandler) handleErrors(w http.ResponseWriter, r *http.Request) {
 	ch := h.collector.SubscribeErrors()
 	defer h.collector.UnsubscribeErrors(ch)
 
-	for {
-		select {
-		case entry, ok := <-ch:
-			if !ok {
-				return
-			}
-			wsMsg := model.WSMessage{Type: "error", Data: entry}
-			if err := conn.WriteJSON(wsMsg); err != nil {
-				return
-			}
+	for entry := range ch {
+		wsMsg := model.WSMessage{Type: "error", Data: entry}
+		if err := conn.WriteJSON(wsMsg); err != nil {
+			return
 		}
 	}
 }

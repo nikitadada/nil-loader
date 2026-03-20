@@ -91,9 +91,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .proto-collapse summary::before{content:'▸';font-size:10px;transition:transform 0.15s}
 .proto-collapse[open] summary::before{transform:rotate(90deg)}
 .sidebar-divider{height:1px;background:var(--border);margin:14px 0}
+.auth-overlay{position:fixed;inset:0;background:rgba(15,17,23,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.auth-card{width:420px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.auth-title{font-size:14px;font-weight:800;letter-spacing:-0.2px;margin-bottom:10px}
+.auth-error{margin-top:10px;font-size:12px;color:var(--red)}
+.auth-hint{margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6}
 </style>
 </head>
 <body>
+
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-title">Access required</div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="authPassword" autocomplete="current-password" placeholder="Enter password">
+    </div>
+    <button id="btnAuth" class="btn btn-start" onclick="doLogin()">Unlock</button>
+    <div id="authError" class="auth-error" style="display:none"></div>
+    <div class="auth-hint">Введите пароль, чтобы перейти к нагрузочному тестированию.</div>
+  </div>
+</div>
 
 <div class="top-bar">
   <h1><span>nil</span>-loader</h1>
@@ -111,16 +129,16 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
     <h2>Connection</h2>
     <div class="form-group">
       <label>Target Host</label>
-      <input type="text" id="target" placeholder="localhost:50051" value="localhost:50051">
+      <input type="text" id="target" placeholder="89.125.63.147:50051" value="89.125.63.147:50051">
     </div>
-    <button class="btn-reflect" onclick="reflectServices()">Discover via Reflection</button>
+    <button id="btnReflect" class="btn-reflect" onclick="reflectServices()">Discover via Reflection</button>
 
     <details class="proto-collapse">
       <summary>Proto Definition (optional)</summary>
       <div class="form-group" style="margin-top:8px">
         <textarea id="protoContent" placeholder='syntax = "proto3";&#10;package example;&#10;...'></textarea>
       </div>
-      <button class="btn-reflect" onclick="parseProto()">Parse Proto</button>
+      <button id="btnParseProto" class="btn-reflect" onclick="parseProto()">Parse Proto</button>
     </details>
 
     <div id="serviceList"></div>
@@ -234,6 +252,7 @@ const API_BASE = `http://${location.host}`;
 let metricsWs, logsWs, errorsWs;
 let timerInterval;
 let startTime;
+let authenticated = false;
 
 // Charts
 const MAX_POINTS = 120;
@@ -278,6 +297,75 @@ function initTerminal(){
   }
 }
 
+function showAuthOverlay(show){
+  const overlay = document.getElementById('authOverlay');
+  if(!overlay){return;}
+  overlay.style.display = show ? 'flex' : 'none';
+}
+
+function setAppEnabled(enabled){
+  document.getElementById('btnStart').disabled = !enabled;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnReport').disabled = !enabled;
+
+  const reflectBtn = document.getElementById('btnReflect');
+  if(reflectBtn){reflectBtn.disabled = !enabled;}
+  const parseBtn = document.getElementById('btnParseProto');
+  if(parseBtn){parseBtn.disabled = !enabled;}
+}
+
+async function initAuth(){
+  authenticated = false;
+  setAppEnabled(false);
+  showAuthOverlay(true);
+
+  try{
+    const resp = await fetch('/auth/status');
+    if(resp.ok){
+      authenticated = true;
+      showAuthOverlay(false);
+      setAppEnabled(true);
+    }else{
+      authenticated = false;
+      showAuthOverlay(true);
+    }
+  }catch(e){
+    authenticated = false;
+    showAuthOverlay(true);
+  }
+}
+
+async function doLogin(){
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  if(!password){
+    errEl.style.display = 'block';
+    errEl.textContent = 'Password is required';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  try{
+    const resp = await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});
+    if(resp.ok){
+      authenticated = true;
+      showAuthOverlay(false);
+      setAppEnabled(true);
+      return;
+    }
+    let msg = 'Unauthorized';
+    try{
+      const data = await resp.json();
+      if(data && data.error){msg = data.error;}
+    }catch(_e){}
+    errEl.style.display = 'block';
+    errEl.textContent = msg;
+  }catch(e){
+    errEl.style.display = 'block';
+    errEl.textContent = e.message;
+  }
+}
+
 // Profile toggle
 document.querySelectorAll('input[name=profile]').forEach(r=>{
   r.addEventListener('change',()=>{
@@ -287,6 +375,7 @@ document.querySelectorAll('input[name=profile]').forEach(r=>{
 
 // Reflect
 async function reflectServices(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
   const target = document.getElementById('target').value;
   try{
     const resp = await fetch(`${API_BASE}/api/reflect`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target})});
@@ -297,6 +386,7 @@ async function reflectServices(){
 }
 
 async function parseProto(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
   const content = document.getElementById('protoContent').value;
   try{
     const resp = await fetch(`${API_BASE}/api/parse-proto`,{method:'POST',body:content});
@@ -329,6 +419,7 @@ function selectMethod(el, svc, method){
 
 // Start/Stop
 async function startTest(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
   resetCharts();
   const profile = document.querySelector('input[name=profile]:checked').value;
   const startRps = parseInt(document.getElementById('startRps').value)||100;
@@ -360,6 +451,7 @@ async function startTest(){
 }
 
 async function stopTest(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
   try{
     await fetch(`${API_BASE}/api/stop`,{method:'POST'});
     termLog(`\x1b[33m[STOP]\x1b[0m Stopping test...`);
@@ -367,6 +459,7 @@ async function stopTest(){
 }
 
 function downloadReport(){
+  if(!authenticated){termLog('\x1b[31m[ERROR]\x1b[0m Auth required');showAuthOverlay(true);return;}
   window.open(`${API_BASE}/api/report`,'_blank');
 }
 
@@ -404,7 +497,7 @@ function updateStatus(status){
   badge.className = 'status-badge status-'+status;
   if(status==='finished'||status==='idle'){
     stopTimer();
-    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStart').disabled = !authenticated;
     document.getElementById('btnStop').disabled = true;
   }
 }
@@ -498,7 +591,7 @@ function startTimer(){
 function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
 
 // Init
-window.addEventListener('load',()=>{initCharts();initTerminal();});
+window.addEventListener('load',()=>{initCharts();initTerminal();initAuth();});
 </script>
 </body>
 </html>

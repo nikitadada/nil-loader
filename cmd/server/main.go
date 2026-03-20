@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/nikitadada/nil-loader/internal/api"
+	"github.com/nikitadada/nil-loader/internal/auth"
 	"github.com/nikitadada/nil-loader/internal/engine"
 	"github.com/nikitadada/nil-loader/internal/model"
 	"github.com/nikitadada/nil-loader/internal/telemetry"
@@ -17,8 +19,9 @@ func main() {
 	detector := telemetry.NewDegradationDetector()
 	eng := engine.NewEngine(state, collector, detector)
 
-	handler := api.NewHandler(eng, state, collector)
-	wsHandler := api.NewWSHandler(eng, collector, state)
+	authSvc := auth.NewServiceFromEnv(24 * time.Hour)
+	handler := api.NewHandler(eng, state, collector, authSvc)
+	wsHandler := api.NewWSHandler(eng, collector, state, authSvc)
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
@@ -27,7 +30,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(web.StaticFS())))
 
 	addr := ":8080"
-	log.Printf("nil-loader started at http://localhost%s", addr)
+	log.Println("nil-loader started")
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}

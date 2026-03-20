@@ -75,12 +75,14 @@ func (s *Server) ProcessUser(_ context.Context, req *pb.ProcessUserRequest) (*pb
 	}, nil
 }
 
-// До 800 RPS: ~5% ошибок. При 2x перегрузке: ~40%. При 3x: ~70%.
+// До 800 RPS: ~3% ошибок.
+// При 1600 RPS (~(1600-800)/800=1 перегрузка): ~30%.
+// При 2400 RPS (~2 перегрузки): ~35%. Асимптота: ~37%.
 func baseErrorRate(overload float64) float64 {
 	if overload <= 0 {
-		return 5.0
+		return 3.0
 	}
-	return 5.0 + 35.0*(1-math.Exp(-1.5*overload))
+	return 3.0 + 34.0*(1-math.Exp(-1.5*overload))
 }
 
 // До 800 RPS: 5-50ms. Выше — латентность растёт квадратично.
