@@ -106,9 +106,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
     <div class="auth-title">Access required</div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="authPassword" autocomplete="current-password" placeholder="Enter password">
+      <input type="password" id="authPassword" autocomplete="current-password" placeholder="Enter password" onkeydown="if (event.key === 'Enter') { event.preventDefault(); doLogin(); }">
     </div>
-    <button id="btnAuth" class="btn btn-start" onclick="doLogin()">Unlock</button>
+    <button id="btnAuth" type="button" class="btn btn-start" onclick="doLogin()">Unlock</button>
     <div id="authError" class="auth-error" style="display:none"></div>
     <div class="auth-hint">Введите пароль, чтобы перейти к нагрузочному тестированию.</div>
   </div>
@@ -180,7 +180,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
     <div class="form-row">
       <div class="form-group">
         <label>Duration (s)</label>
-        <input type="number" id="duration" value="30" min="1">
+        <input type="number" id="duration" value="60" min="1">
       </div>
       <div class="form-group">
         <label>Max Workers</label>
