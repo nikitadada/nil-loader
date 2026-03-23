@@ -27,6 +27,7 @@ func main() {
 	handler.RegisterRoutes(mux)
 	wsHandler.RegisterRoutes(mux)
 
+	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("internal/docs"))))
 	mux.Handle("/", http.FileServer(http.FS(web.StaticFS())))
 
 	addr := ":8080"
