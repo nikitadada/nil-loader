@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package example;
+package demo.user.v1;
 
-option go_package = "github.com/nikitadada/nil-loader/proto/example";
+option go_package = "github.com/nikitadada/nil-loader/proto/demo/user/v1;userv1";
 
-service ExampleService {
+service UserService {
   rpc ProcessUser(ProcessUserRequest) returns (ProcessUserResponse);
 }
 

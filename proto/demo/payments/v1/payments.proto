@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package demo.payments.v1;
+
+option go_package = "github.com/nikitadada/nil-loader/proto/demo/payments/v1;paymentsv1";
+
+service PaymentsService {
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+  rpc Refund(RefundRequest) returns (RefundResponse);
+}
+
+enum PaymentMethod {
+  PAYMENT_METHOD_UNKNOWN = 0;
+  PAYMENT_METHOD_CARD = 1;
+  PAYMENT_METHOD_SBP = 2;
+  PAYMENT_METHOD_CASH = 3;
+}
+
+enum CaptureType {
+  CAPTURE_TYPE_UNKNOWN = 0;
+  CAPTURE_TYPE_FULL = 1;
+  CAPTURE_TYPE_PARTIAL = 2;
+}
+
+message Money {
+  int64 units = 1;
+  int32 nanos = 2;
+  string currency_code = 3;
+}
+
+message Card {
+  string pan_last4 = 1;
+  int32 exp_month = 2;
+  int32 exp_year = 3;
+  string holder_name = 4;
+}
+
+message AuthorizeRequest {
+  string payment_id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  Money amount = 4;
+  PaymentMethod method = 5;
+  Card card = 6;
+  repeated string metadata_keys = 7;
+}
+
+message AuthorizeResponse {
+  string status = 1;
+  string request_id = 2;
+  bool authorized = 3;
+  string auth_code = 4;
+}
+
+message CaptureRequest {
+  string payment_id = 1;
+  Money amount = 2;
+  CaptureType type = 3;
+}
+
+message CaptureResponse {
+  string status = 1;
+  string request_id = 2;
+  bool captured = 3;
+}
+
+message RefundDetails {
+  string reason = 1;
+  repeated string reason_codes = 2;
+}
+
+message RefundRequest {
+  string payment_id = 1;
+  Money amount = 2;
+  RefundDetails details = 3;
+}
+
+message RefundResponse {
+  string status = 1;
+  string request_id = 2;
+  bool refunded = 3;
+  string refund_id = 4;
+}

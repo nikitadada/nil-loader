@@ -179,7 +179,7 @@ func (b *templateBuilder) buildScalarOrMessageField(fd *desc.FieldDescriptor, de
 		if len(vals) == 0 {
 			return "\"0\"", true
 		}
-		return strconv.Quote(vals[0].GetName()), true
+		return strconv.Quote(b.chooseEnumValueName(vals)), true
 	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
 		// Protobuf bytes are base64 strings in JSON; empty bytes => empty base64 string.
 		return `""`, true
@@ -191,6 +191,32 @@ func (b *templateBuilder) buildScalarOrMessageField(fd *desc.FieldDescriptor, de
 		// This should be rare.
 		return strconv.Quote(b.safeToken), true
 	}
+}
+
+func (b *templateBuilder) chooseEnumValueName(vals []*desc.EnumValueDescriptor) string {
+	// В некоторых протосхемах первым значением идёт *_INVALID (или аналогичный "заглушечный" enum),
+	// который нельзя использовать в запросах по умолчанию.
+	for _, v := range vals {
+		if v == nil {
+			continue
+		}
+		name := v.GetName()
+		if name == "" {
+			continue
+		}
+		if strings.HasSuffix(name, "_INVALID") || strings.HasSuffix(name, "_UNKNOWN") {
+			continue
+		}
+		return name
+	}
+
+	// Фоллбек: возвращаем первое значение как раньше, чтобы не ломать генерацию на редких схемах,
+	// где все значения отмечены как INVALID (или список заполнен странно).
+	if len(vals) > 0 && vals[0] != nil && vals[0].GetName() != "" {
+		b.warnings = append(b.warnings, "enum has only *_INVALID values; falling back to first")
+		return vals[0].GetName()
+	}
+	return "0"
 }
 
 func (b *templateBuilder) buildMessageOrWellKnown(md *desc.MessageDescriptor, depth int) string {

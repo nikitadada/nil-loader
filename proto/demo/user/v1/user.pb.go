@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.4
-// source: proto/example/example.proto
+// source: proto/demo/user/v1/user.proto
 
-package example
+package userv1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -35,7 +35,7 @@ type ProcessUserRequest struct {
 
 func (x *ProcessUserRequest) Reset() {
 	*x = ProcessUserRequest{}
-	mi := &file_proto_example_example_proto_msgTypes[0]
+	mi := &file_proto_demo_user_v1_user_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *ProcessUserRequest) String() string {
 func (*ProcessUserRequest) ProtoMessage() {}
 
 func (x *ProcessUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_example_example_proto_msgTypes[0]
+	mi := &file_proto_demo_user_v1_user_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *ProcessUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessUserRequest.ProtoReflect.Descriptor instead.
 func (*ProcessUserRequest) Descriptor() ([]byte, []int) {
-	return file_proto_example_example_proto_rawDescGZIP(), []int{0}
+	return file_proto_demo_user_v1_user_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ProcessUserRequest) GetUserId() string {
@@ -116,7 +116,7 @@ type ProcessUserResponse struct {
 
 func (x *ProcessUserResponse) Reset() {
 	*x = ProcessUserResponse{}
-	mi := &file_proto_example_example_proto_msgTypes[1]
+	mi := &file_proto_demo_user_v1_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -128,7 +128,7 @@ func (x *ProcessUserResponse) String() string {
 func (*ProcessUserResponse) ProtoMessage() {}
 
 func (x *ProcessUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_example_example_proto_msgTypes[1]
+	mi := &file_proto_demo_user_v1_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -141,7 +141,7 @@ func (x *ProcessUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessUserResponse.ProtoReflect.Descriptor instead.
 func (*ProcessUserResponse) Descriptor() ([]byte, []int) {
-	return file_proto_example_example_proto_rawDescGZIP(), []int{1}
+	return file_proto_demo_user_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ProcessUserResponse) GetStatus() string {
@@ -165,11 +165,11 @@ func (x *ProcessUserResponse) GetProcessedAt() int64 {
 	return 0
 }
 
-var File_proto_example_example_proto protoreflect.FileDescriptor
+var File_proto_demo_user_v1_user_proto protoreflect.FileDescriptor
 
-const file_proto_example_example_proto_rawDesc = "" +
+const file_proto_demo_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/example/example.proto\x12\aexample\"\xa3\x01\n" +
+	"\x1dproto/demo/user/v1/user.proto\x12\fdemo.user.v1\"\xa3\x01\n" +
 	"\x12ProcessUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -181,30 +181,30 @@ const file_proto_example_example_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12!\n" +
-	"\fprocessed_at\x18\x03 \x01(\x03R\vprocessedAt2Z\n" +
-	"\x0eExampleService\x12H\n" +
-	"\vProcessUser\x12\x1b.example.ProcessUserRequest\x1a\x1c.example.ProcessUserResponseB0Z.github.com/nikitadada/nil-loader/proto/exampleb\x06proto3"
+	"\fprocessed_at\x18\x03 \x01(\x03R\vprocessedAt2a\n" +
+	"\vUserService\x12R\n" +
+	"\vProcessUser\x12 .demo.user.v1.ProcessUserRequest\x1a!.demo.user.v1.ProcessUserResponseB<Z:github.com/nikitadada/nil-loader/proto/demo/user/v1;userv1b\x06proto3"
 
 var (
-	file_proto_example_example_proto_rawDescOnce sync.Once
-	file_proto_example_example_proto_rawDescData []byte
+	file_proto_demo_user_v1_user_proto_rawDescOnce sync.Once
+	file_proto_demo_user_v1_user_proto_rawDescData []byte
 )
 
-func file_proto_example_example_proto_rawDescGZIP() []byte {
-	file_proto_example_example_proto_rawDescOnce.Do(func() {
-		file_proto_example_example_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_example_example_proto_rawDesc), len(file_proto_example_example_proto_rawDesc)))
+func file_proto_demo_user_v1_user_proto_rawDescGZIP() []byte {
+	file_proto_demo_user_v1_user_proto_rawDescOnce.Do(func() {
+		file_proto_demo_user_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_demo_user_v1_user_proto_rawDesc), len(file_proto_demo_user_v1_user_proto_rawDesc)))
 	})
-	return file_proto_example_example_proto_rawDescData
+	return file_proto_demo_user_v1_user_proto_rawDescData
 }
 
-var file_proto_example_example_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_proto_example_example_proto_goTypes = []any{
-	(*ProcessUserRequest)(nil),  // 0: example.ProcessUserRequest
-	(*ProcessUserResponse)(nil), // 1: example.ProcessUserResponse
+var file_proto_demo_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_demo_user_v1_user_proto_goTypes = []any{
+	(*ProcessUserRequest)(nil),  // 0: demo.user.v1.ProcessUserRequest
+	(*ProcessUserResponse)(nil), // 1: demo.user.v1.ProcessUserResponse
 }
-var file_proto_example_example_proto_depIdxs = []int32{
-	0, // 0: example.ExampleService.ProcessUser:input_type -> example.ProcessUserRequest
-	1, // 1: example.ExampleService.ProcessUser:output_type -> example.ProcessUserResponse
+var file_proto_demo_user_v1_user_proto_depIdxs = []int32{
+	0, // 0: demo.user.v1.UserService.ProcessUser:input_type -> demo.user.v1.ProcessUserRequest
+	1, // 1: demo.user.v1.UserService.ProcessUser:output_type -> demo.user.v1.ProcessUserResponse
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -212,26 +212,26 @@ var file_proto_example_example_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_example_example_proto_init() }
-func file_proto_example_example_proto_init() {
-	if File_proto_example_example_proto != nil {
+func init() { file_proto_demo_user_v1_user_proto_init() }
+func file_proto_demo_user_v1_user_proto_init() {
+	if File_proto_demo_user_v1_user_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_example_example_proto_rawDesc), len(file_proto_example_example_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_demo_user_v1_user_proto_rawDesc), len(file_proto_demo_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_example_example_proto_goTypes,
-		DependencyIndexes: file_proto_example_example_proto_depIdxs,
-		MessageInfos:      file_proto_example_example_proto_msgTypes,
+		GoTypes:           file_proto_demo_user_v1_user_proto_goTypes,
+		DependencyIndexes: file_proto_demo_user_v1_user_proto_depIdxs,
+		MessageInfos:      file_proto_demo_user_v1_user_proto_msgTypes,
 	}.Build()
-	File_proto_example_example_proto = out.File
-	file_proto_example_example_proto_goTypes = nil
-	file_proto_example_example_proto_depIdxs = nil
+	File_proto_demo_user_v1_user_proto = out.File
+	file_proto_demo_user_v1_user_proto_goTypes = nil
+	file_proto_demo_user_v1_user_proto_depIdxs = nil
 }

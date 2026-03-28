@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package demo.orders.v1;
+
+option go_package = "github.com/nikitadada/nil-loader/proto/demo/orders/v1;ordersv1";
+
+service OrdersService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNKNOWN = 0;
+  ORDER_STATUS_CREATED = 1;
+  ORDER_STATUS_PAID = 2;
+  ORDER_STATUS_CANCELLED = 3;
+}
+
+message Money {
+  int64 units = 1;
+  int32 nanos = 2;
+  string currency_code = 3;
+}
+
+message OrderItem {
+  string sku = 1;
+  int32 quantity = 2;
+  Money price = 3;
+}
+
+message Order {
+  string order_id = 1;
+  string user_id = 2;
+  OrderStatus status = 3;
+  repeated OrderItem items = 4;
+  Money total = 5;
+  int64 created_at_ms = 6;
+}
+
+message CreateOrderRequest {
+  Order order = 1;
+  bool dry_run = 2;
+  repeated string tags = 3;
+}
+
+message CreateOrderResponse {
+  string status = 1;
+  string request_id = 2;
+  Order order = 3;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+  bool include_items = 2;
+}
+
+message GetOrderResponse {
+  string status = 1;
+  string request_id = 2;
+  Order order = 3;
+}
+
+message ListOrdersRequest {
+  string user_id = 1;
+  OrderStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListOrdersResponse {
+  string status = 1;
+  string request_id = 2;
+  repeated Order orders = 3;
+  string next_page_token = 4;
+}
