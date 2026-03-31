@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"math"
 	"sync"
 
 	"github.com/nikitadada/nil-loader/internal/model"
@@ -87,19 +88,19 @@ func (d *DegradationDetector) Analyze(snap model.MetricsSnapshot) {
 		reason = "error rate exceeded threshold"
 	}
 
-	maxStable := d.findLastStableRPS()
+	lastStable := d.findLastStableRPS()
+	safeBase := math.Min(lastStable, snap.ActualRPS)
 
 	d.result = DegradationResult{
 		Detected:       true,
 		DegradationRPS: snap.ActualRPS,
-		RecommendedRPS: maxStable * recommendedFactor,
-		MaxStableRPS:   maxStable,
+		RecommendedRPS: safeBase * recommendedFactor,
+		MaxStableRPS:   lastStable,
 		Reason:         reason,
 	}
 }
 
 func (d *DegradationDetector) findLastStableRPS() float64 {
-	var maxStable float64
 	for i := len(d.snapshots) - 2; i >= 0; i-- {
 		s := d.snapshots[i]
 		if s.ActualRPS <= 0 {
@@ -112,15 +113,16 @@ func (d *DegradationDetector) findLastStableRPS() float64 {
 		errRate := float64(s.IntervalErrors) / float64(intervalTotal) * 100
 		p99Ok := d.baselineP99 <= 0 || s.P99 < d.baselineP99*p99GrowthFactor
 		if errRate < errorRateThreshold && p99Ok {
-			if s.ActualRPS > maxStable {
-				maxStable = s.ActualRPS
-			}
+			return s.ActualRPS
 		}
 	}
-	if maxStable == 0 && len(d.snapshots) > 0 {
-		maxStable = d.snapshots[0].ActualRPS
+	if len(d.snapshots) > 0 {
+		fallback := d.snapshots[0].ActualRPS
+		if fallback > 0 {
+			return fallback
+		}
 	}
-	return maxStable
+	return 0
 }
 
 func (d *DegradationDetector) GetResult() DegradationResult {
