@@ -13,13 +13,13 @@ func TestDegradationDetector_UsesLastStableBeforeDegradation(t *testing.T) {
 	d := NewDegradationDetector()
 
 	feedSnapshots(d, []model.MetricsSnapshot{
-		stableSnapshot(100, 100, 0),
-		stableSnapshot(120, 100, 0),
-		stableSnapshot(140, 100, 0),
-		stableSnapshot(160, 100, 0),
-		stableSnapshot(180, 100, 0),
-		stableSnapshot(493, 120, 0), // исторический максимум stable
-		stableSnapshot(300, 110, 0), // последняя stable перед деградацией
+		stableSnapshot(100, 100),
+		stableSnapshot(120, 100),
+		stableSnapshot(140, 100),
+		stableSnapshot(160, 100),
+		stableSnapshot(180, 100),
+		stableSnapshot(493, 120), // исторический максимум stable
+		stableSnapshot(300, 110), // последняя stable перед деградацией
 		degradedByErrorsSnapshot(381, 120, 300, 81),
 	})
 
@@ -41,13 +41,13 @@ func TestDegradationDetector_MonotonicGrowth(t *testing.T) {
 	d := NewDegradationDetector()
 
 	feedSnapshots(d, []model.MetricsSnapshot{
-		stableSnapshot(100, 100, 0),
-		stableSnapshot(120, 100, 0),
-		stableSnapshot(140, 100, 0),
-		stableSnapshot(160, 100, 0),
-		stableSnapshot(180, 100, 0),
-		stableSnapshot(220, 110, 0),
-		stableSnapshot(300, 120, 0),
+		stableSnapshot(100, 100),
+		stableSnapshot(120, 100),
+		stableSnapshot(140, 100),
+		stableSnapshot(160, 100),
+		stableSnapshot(180, 100),
+		stableSnapshot(220, 110),
+		stableSnapshot(300, 120),
 		degradedByErrorsSnapshot(360, 120, 300, 60),
 	})
 
@@ -69,11 +69,11 @@ func TestDegradationDetector_FallbackWhenNoStableInterval(t *testing.T) {
 	d := NewDegradationDetector()
 
 	feedSnapshots(d, []model.MetricsSnapshot{
-		noIntervalSnapshot(100, 100),
-		noIntervalSnapshot(120, 100),
-		noIntervalSnapshot(140, 100),
-		noIntervalSnapshot(160, 100),
-		noIntervalSnapshot(180, 100),
+		noIntervalSnapshot(100),
+		noIntervalSnapshot(120),
+		noIntervalSnapshot(140),
+		noIntervalSnapshot(160),
+		noIntervalSnapshot(180),
 		degradedByErrorsSnapshot(80, 120, 60, 20),
 	})
 
@@ -95,16 +95,13 @@ func feedSnapshots(d *DegradationDetector, snapshots []model.MetricsSnapshot) {
 	}
 }
 
-func stableSnapshot(actualRPS float64, p99 float64, intervalErrors int64) model.MetricsSnapshot {
-	success := int64(actualRPS) - intervalErrors
-	if success < 0 {
-		success = 0
-	}
+func stableSnapshot(actualRPS float64, p99 float64) model.MetricsSnapshot {
+	success := int64(actualRPS)
 	return model.MetricsSnapshot{
 		ActualRPS:       actualRPS,
 		P99:             p99,
 		IntervalSuccess: success,
-		IntervalErrors:  intervalErrors,
+		IntervalErrors:  0,
 	}
 }
 
@@ -117,10 +114,10 @@ func degradedByErrorsSnapshot(actualRPS float64, p99 float64, intervalSuccess in
 	}
 }
 
-func noIntervalSnapshot(actualRPS float64, p99 float64) model.MetricsSnapshot {
+func noIntervalSnapshot(actualRPS float64) model.MetricsSnapshot {
 	return model.MetricsSnapshot{
 		ActualRPS:       actualRPS,
-		P99:             p99,
+		P99:             100,
 		IntervalSuccess: 0,
 		IntervalErrors:  0,
 	}
