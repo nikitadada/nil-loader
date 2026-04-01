@@ -21,18 +21,27 @@
 - поддерживаются только unary-методы;
 - метрики хранятся в памяти и не сохраняются между перезапусками.
 
-## Локальный запуск из исходников
+## Локальный запуск в Docker
 
-Основной способ запуска — через `Makefile`.
-
-Запуск сразу `nil-loader` и тестового `testservice` (как пример сервиса для тестирования в UI):
+1. Собрать образ:
 
 ```bash
-make build
-make run-all
+make docker-build
 ```
 
-UI доступен по адресу `http://localhost:8080`.
+2. Запустить `nil-loader` и `testservice` вместе:
+
+```bash
+make docker-run-all
+```
+
+3. Открыть UI:
+
+```text
+http://localhost:8080
+```
+
+4. Ввести пароль в UI (по умолчанию: `merlion`).
 
 ## Как провести демо
 
@@ -60,27 +69,18 @@ make run-all
 
 6. После завершения показать рассчитанную точку деградации и рекомендованный безопасный RPS, затем при необходимости экспортировать JSON-отчет.
 
-## Локальный запуск в Docker
+## Локальный запуск из исходников
 
-1. Собрать образ:
+Основной способ запуска — через `Makefile`.
 
-```bash
-make docker-build
-```
-
-2. Запустить `nil-loader` и `testservice` вместе:
+Запуск сразу `nil-loader` и тестового `testservice` (как пример сервиса для тестирования в UI):
 
 ```bash
-make docker-run-all
+make build
+make run-all
 ```
 
-3. Открыть UI:
-
-```text
-http://localhost:8080
-```
-
-4. Ввести пароль в UI (по умолчанию: `merlion`).
+UI доступен по адресу `http://localhost:8080`.
 
 ## Как запустить testservice отдельно
 
@@ -96,5 +96,5 @@ make run-test
 
 ## Полезные ссылки
 
-- Презентация: [`internal/docs/nil-loader_full.pdf`](internal/docs/nil-loader_full.pdf)
+- Презентация: [`web/docs/nil-loader_full.pdf`](web/docs/nil-loader_full.pdf)
 - Сервис в интернете: [`https://nil-loader.ru/`](https://nil-loader.ru/)
