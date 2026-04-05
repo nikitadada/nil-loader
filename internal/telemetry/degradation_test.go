@@ -20,7 +20,7 @@ func TestDegradationDetector_UsesLastStableBeforeDegradation(t *testing.T) {
 		stableSnapshot(180, 100),
 		stableSnapshot(493, 120), // исторический максимум stable
 		stableSnapshot(300, 110), // последняя stable перед деградацией
-		degradedByErrorsSnapshot(381, 120, 300, 81),
+		degradedByErrorsSnapshot(381, 300, 81),
 	})
 
 	res := d.GetResult()
@@ -46,7 +46,7 @@ func TestDegradationDetector_MonotonicGrowth(t *testing.T) {
 		stableSnapshot(180, 100),
 		stableSnapshot(220, 110),
 		stableSnapshot(300, 120),
-		degradedByErrorsSnapshot(360, 120, 300, 60),
+		degradedByErrorsSnapshot(360, 300, 60),
 	})
 
 	res := d.GetResult()
@@ -70,7 +70,7 @@ func TestDegradationDetector_FallbackWhenNoStableInterval(t *testing.T) {
 		noIntervalSnapshot(140),
 		noIntervalSnapshot(160),
 		noIntervalSnapshot(180),
-		degradedByErrorsSnapshot(80, 120, 60, 20),
+		degradedByErrorsSnapshot(80, 60, 20),
 	})
 
 	res := d.GetResult()
@@ -95,7 +95,7 @@ func TestDegradationDetector_LoadDropHigherLastStableThanDegradation(t *testing.
 		stableSnapshot(160, 100),
 		stableSnapshot(180, 100),
 		stableSnapshot(1101, 100),
-		degradedByErrorsSnapshot(795, 120, 300, 81),
+		degradedByErrorsSnapshot(795, 300, 81),
 	})
 
 	res := d.GetResult()
@@ -124,7 +124,9 @@ func stableSnapshot(actualRPS float64, p99 float64) model.MetricsSnapshot {
 	}
 }
 
-func degradedByErrorsSnapshot(actualRPS float64, p99 float64, intervalSuccess int64, intervalErrors int64) model.MetricsSnapshot {
+// p99 фиксирован: деградация в тестах задаётся только через error rate.
+func degradedByErrorsSnapshot(actualRPS float64, intervalSuccess int64, intervalErrors int64) model.MetricsSnapshot {
+	const p99 = 120
 	return model.MetricsSnapshot{
 		ActualRPS:       actualRPS,
 		P99:             p99,
