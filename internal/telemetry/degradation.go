@@ -11,8 +11,9 @@ type DegradationResult struct {
 	Detected       bool    `json:"detected"`
 	DegradationRPS float64 `json:"degradationRps"`
 	RecommendedRPS float64 `json:"recommendedRps"`
-	MaxStableRPS   float64 `json:"maxStableRps"`
-	Reason         string  `json:"reason"`
+	// MaxStableRPS is the last stable throughput capped at DegradationRPS (avoids showing a higher RPS after load drops).
+	MaxStableRPS float64 `json:"maxStableRps"`
+	Reason       string  `json:"reason"`
 }
 
 type DegradationDetector struct {
@@ -95,7 +96,7 @@ func (d *DegradationDetector) Analyze(snap model.MetricsSnapshot) {
 		Detected:       true,
 		DegradationRPS: snap.ActualRPS,
 		RecommendedRPS: safeBase * recommendedFactor,
-		MaxStableRPS:   lastStable,
+		MaxStableRPS:   safeBase,
 		Reason:         reason,
 	}
 }
